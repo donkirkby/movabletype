@@ -3,7 +3,8 @@ package com.andrewpmsmith.movabletype.test;
 import java.util.ArrayList;
 import java.util.List;
 
-import android.test.AndroidTestCase;
+import junit.framework.Assert;
+import junit.framework.TestCase;
 
 import com.andrewpmsmith.movabletype.model.GameModel;
 import com.andrewpmsmith.movabletype.model.GameModel.GameResult;
@@ -11,9 +12,7 @@ import com.andrewpmsmith.movabletype.model.GameModel.GameState;
 import com.andrewpmsmith.movabletype.model.GameModel.LetterState;
 import com.andrewpmsmith.movabletype.model.GameModel.TurnResult;
 
-import junit.framework.Assert;
-
-public class GameModelTest extends AndroidTestCase {
+public class GameModelTest extends TestCase {
 	
 	private List<Integer> generateIndexListFromWord(String word, char[] grid) {
 		
@@ -106,7 +105,7 @@ public class GameModelTest extends AndroidTestCase {
 				gameState,
 				p1Points,
 				p2Points,
-				getContext());
+				new WordFinderStub(turns));
 		
 		assertNotNull(gm);
 		
@@ -166,25 +165,6 @@ public class GameModelTest extends AndroidTestCase {
 		
 	}
 	
-	/*
-	 * Test that instances can be serialized and restored
-	 */
-	public void test_serialization() {
-		
-		// Serialize our game model
-		GameModel gm = new GameModel(getContext());
-		byte[] s = gm.serialize();
-		Assert.assertNotNull(s);
-		
-		// Delete it
-		gm = null;
-		System.gc();
-		
-		// Restore it
-		GameModel gm2 = GameModel.deserialize(s, getContext());
-		Assert.assertNotNull(gm2);
-		
-	}
 	
 	
 }

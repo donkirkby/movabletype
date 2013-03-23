@@ -73,7 +73,7 @@ public class GameModel implements Serializable {
 	private int mPlayer1Points;
 	private int mPlayer2Points;
 
-	transient protected Context mContext;
+	transient protected WordFinder mWordFinder;
 
 	public GameModel(Context context) {
 
@@ -83,7 +83,7 @@ public class GameModel implements Serializable {
 		mPlayer1Points = 0;
 		mPlayer2Points = 0;
 
-		mContext = context;
+		setContext(context);
 
 	}
 
@@ -95,7 +95,7 @@ public class GameModel implements Serializable {
 	}
 
 	private void setContext(Context context) {
-		mContext = context;
+		mWordFinder = new WordList(context);
 	}
 
 	public byte[] serialize() {
@@ -103,7 +103,7 @@ public class GameModel implements Serializable {
 	}
 
 	public GameModel(char[] grid, LetterState[] states, GameState gameState,
-			int p1Points, int p2Points, Context context) {
+			int p1Points, int p2Points, WordFinder wordFinder) {
 
 		mGrid = new Letter[GRID_ITEMS];
 
@@ -115,7 +115,7 @@ public class GameModel implements Serializable {
 		mPlayer1Points = p1Points;
 		mPlayer2Points = p2Points;
 
-		mContext = context;
+		mWordFinder = wordFinder;
 
 	}
 
@@ -372,8 +372,7 @@ public class GameModel implements Serializable {
 			return TurnResult.WORD_IS_PREFIX_OF_PREVIOUS_TURN;
 
 		// Rule 4. Word must be in the English dictionary
-		WordList db = new WordList(mContext);
-		if (!db.wordInDictionary(word))
+		if (!mWordFinder.wordInDictionary(word))
 			return TurnResult.WORD_NOT_IN_DICTIONARY;
 
 		return TurnResult.SUCCESS;

@@ -24,7 +24,7 @@ import com.andrewpmsmith.movabletype.R;
  *
  * @author Andrew Smith
  */
-public class WordList extends SQLiteOpenHelper {
+public class WordList extends SQLiteOpenHelper implements WordFinder {
 
 	private static final int DATABASE_VERSION = 1;
 	private static final String DATABASE_NAME = "wordlist";
@@ -128,6 +128,10 @@ public class WordList extends SQLiteOpenHelper {
 
 	}
 
+	/* (non-Javadoc)
+	 * @see com.andrewpmsmith.movabletype.model.WordFinder#wordInDictionary(java.lang.String)
+	 */
+	@Override
 	public boolean wordInDictionary(String word) {
 		
 		if (word==null || !word.matches("^[A-Z]+$")) {
