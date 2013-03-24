@@ -2,6 +2,7 @@ package com.andrewpmsmith.movabletype.test;
 
 import com.andrewpmsmith.movabletype.model.AnagramsGameModel;
 import com.andrewpmsmith.movabletype.model.AnagramsPlayer;
+import com.andrewpmsmith.movabletype.model.InvalidWordException;
 
 public class AnagramsGameModelTest extends AnagramsTestCase {
 	public void testReveal() {
@@ -40,7 +41,7 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquals("unclaimed letters", "X", unclaimedLetters);
 	}
 
-	public void testMakeWord() {
+	public void testMakeWord() throws InvalidWordException {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -62,21 +63,21 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //G
 		model.revealLetter(); //O
 
-		boolean isSuccess = model.makeWord("FORE", player2);
+		model.makeWord("FORE", player2);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		int player2Score = player2.getScore();
 		
 		// VERIFY
-		assertTrue("success", isSuccess);
 		assertEquals("unclaimed letters", "G", unclaimedLetters);
 		assertEquals("score 1", 0, player1Score);
 		assertEquals("score 2", 4, player2Score);
 	}
 
-	public void testMakeGoodWordAfterUnavailableWord() {
+	public void testMakeGoodWordAfterUnavailableWord() throws Exception {
 		// SETUP
-		AnagramsGameModel model = new AnagramsGameModel();
+		String expectedMessage = "The letter K is not available to make FORK.";
+		final AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
 			"FORE",
 			"GORE",
@@ -84,8 +85,8 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 			"FORK"
 		}));
 		model.setDeck("ERFGOP");
-		AnagramsPlayer player1 = new AnagramsPlayer();
-		AnagramsPlayer player2 = new AnagramsPlayer();
+		final AnagramsPlayer player1 = new AnagramsPlayer();
+		final AnagramsPlayer player2 = new AnagramsPlayer();
 		model.addPlayer(player1);
 		model.addPlayer(player2);
 		
@@ -96,14 +97,45 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //G
 		model.revealLetter(); //O
 
-		model.makeWord("FORK", player2);
-		boolean isSuccess = model.makeWord("FORE", player2);
+		InvalidWordException ex = makeInvalidWord(model, "FORK", player2);
+		model.makeWord("FORE", player2);
 		
 		// VERIFY
-		assertTrue("success", isSuccess);
+		assertEquals("message", expectedMessage, ex.getMessage());
 	}
 
-	public void testChangeWord() {
+	private InvalidWordException makeInvalidWord(
+			final AnagramsGameModel model, 
+			final String word,
+			final AnagramsPlayer player) throws Exception {
+		InvalidWordException ex = assertThrows(
+				InvalidWordException.class,
+				new Testable() {
+					@Override
+					public void run() throws Exception {
+						model.makeWord(word, player);
+					}
+				});
+		return ex;
+	}
+
+	private InvalidWordException changeInvalidWord(
+			final AnagramsGameModel model, 
+			final String oldWord,
+			final String newWord,
+			final AnagramsPlayer player) throws Exception {
+		InvalidWordException ex = assertThrows(
+				InvalidWordException.class,
+				new Testable() {
+					@Override
+					public void run() throws Exception {
+						model.changeWord(oldWord, newWord, player);
+					}
+				});
+		return ex;
+	}
+
+	public void testChangeWord() throws InvalidWordException {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -128,19 +160,18 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //P
 
 		model.makeWord("FORE", player2);
-		boolean isSuccess = model.changeWord("FORE", "FORGE", player1);
+		model.changeWord("FORE", "FORGE", player1);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		int player2Score = player2.getScore();
 		
 		// VERIFY
-		assertTrue("success", isSuccess);
 		assertEquals("unclaimed letters", "P", unclaimedLetters);
 		assertEquals("score 1", 5, player1Score);
 		assertEquals("score 2", 0, player2Score);
 	}
 
-	public void testChangeUnusedWord() {
+	public void testChangeUnusedWord() throws Exception {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -164,17 +195,59 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //O
 		model.revealLetter(); //P
 
-		boolean isSuccess = model.changeWord("FORE", "FORGE", player1);
+		InvalidWordException ex = 
+				changeInvalidWord(model, "FORE", "FORGE", player1);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		
 		// VERIFY
-		assertFalse("success", isSuccess);
+		assertEquals("message", "FORE is not a claimed word.", ex.getMessage());
 		assertEquals("unclaimed letters", "ERFGOP", unclaimedLetters);
 		assertEquals("score 1", 0, player1Score);
 	}
 
-	public void testChangeToUnavailableWord() {
+	public void testChangeToUnavailableWord() throws Exception {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"FORE",
+			"FORCE",
+			"FORGE",
+			"FORK",
+			"GORE",
+			"PORE",
+		}));
+		model.setDeck("ERFGOPN");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //E
+		model.revealLetter(); //R
+		model.revealLetter(); //F
+		model.revealLetter(); //G
+		model.revealLetter(); //O
+		model.revealLetter(); //P
+
+		model.makeWord("FORE", player1);
+		InvalidWordException ex = 
+				changeInvalidWord(model, "FORE", "FORCE", player1);
+		model.changeWord("FORE", "FORGE", player1);
+		String unclaimedLetters = model.getUnclaimedLetters();
+		int player1Score = player1.getScore();
+		
+		// VERIFY
+		assertEquals(
+				"message",
+				"C is not available to make FORCE.",
+				ex.getMessage());
+		assertEquals("unclaimed letters", "P", unclaimedLetters);
+		assertEquals("score 1", 5, player1Score);
+	}
+
+	public void testIncompleteChange() throws Exception {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -199,56 +272,22 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //P
 
 		model.makeWord("FORE", player1);
-		boolean isSuccess1 = model.changeWord("FORE", "FORCE", player1);
-		boolean isSuccess2 = model.changeWord("FORE", "FORGE", player1);
+		InvalidWordException ex = 
+				changeInvalidWord(model, "FORE", "PORE", player1);
+		model.changeWord("FORE", "FORGE", player1);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		
 		// VERIFY
-		assertFalse("success of unavailable", isSuccess1);
-		assertTrue("success of available", isSuccess2);
+		assertEquals(
+				"message",
+				"Some letters of FORE were not used in PORE.",
+				ex.getMessage());
 		assertEquals("unclaimed letters", "P", unclaimedLetters);
 		assertEquals("score 1", 5, player1Score);
 	}
 
-	public void testIncompleteChange() {
-		// SETUP
-		AnagramsGameModel model = new AnagramsGameModel();
-		model.setWordFinder(new WordFinderStub(new String[] {
-			"FORE",
-			"FORGE",
-			"FORK",
-			"GORE",
-			"PORE",
-		}));
-		model.setDeck("ERFGOPN");
-		AnagramsPlayer player1 = new AnagramsPlayer();
-		AnagramsPlayer player2 = new AnagramsPlayer();
-		model.addPlayer(player1);
-		model.addPlayer(player2);
-		
-		// EXEC
-		model.revealLetter(); //E
-		model.revealLetter(); //R
-		model.revealLetter(); //F
-		model.revealLetter(); //G
-		model.revealLetter(); //O
-		model.revealLetter(); //P
-
-		model.makeWord("FORE", player1);
-		boolean isSuccess1 = model.changeWord("FORE", "PORE", player1);
-		boolean isSuccess2 = model.changeWord("FORE", "FORGE", player1);
-		String unclaimedLetters = model.getUnclaimedLetters();
-		int player1Score = player1.getScore();
-		
-		// VERIFY
-		assertFalse("success of incomplete", isSuccess1);
-		assertTrue("success of available", isSuccess2);
-		assertEquals("unclaimed letters", "P", unclaimedLetters);
-		assertEquals("score 1", 5, player1Score);
-	}
-
-	public void testMakeUnknownWord() {
+	public void testMakeUnknownWord() throws Exception {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -270,19 +309,22 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //G
 		model.revealLetter(); //O
 
-		boolean isSuccess = model.makeWord("FORG", player2);
+		InvalidWordException ex = makeInvalidWord(model, "FORG", player2);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		int player2Score = player2.getScore();
 		
 		// VERIFY
-		assertFalse("success", isSuccess);
+		assertEquals(
+				"message", 
+				"FORG is not in the dictionary.", 
+				ex.getMessage());
 		assertEquivalent("unclaimed letters", "ERFGO", unclaimedLetters);
 		assertEquals("score 1", 0, player1Score);
 		assertEquals("score 2", 0, player2Score);
 	}
 
-	public void testMakeUnavailableWord() {
+	public void testMakeUnavailableWord() throws Exception {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -304,13 +346,16 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		model.revealLetter(); //G
 		model.revealLetter(); //O
 
-		boolean isSuccess = model.makeWord("FORK", player2);
+		InvalidWordException ex = makeInvalidWord(model, "FORK", player2);
 		String unclaimedLetters = model.getUnclaimedLetters();
 		int player1Score = player1.getScore();
 		int player2Score = player2.getScore();
 		
 		// VERIFY
-		assertFalse("success", isSuccess);
+		assertEquals(
+				"message",
+				"The letter K is not available to make FORK.",
+				ex.getMessage());
 		assertEquivalent("unclaimed letters", "ERFGO", unclaimedLetters);
 		assertEquals("score 1", 0, player1Score);
 		assertEquals("score 2", 0, player2Score);

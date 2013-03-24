@@ -58,26 +58,30 @@ public class AnagramsGameModel implements Serializable {
 
 	/**
 	 * Make a word from unclaimed letters, and assign it to a player.
-	 * @param word The word to make: must be in the dictionary, and makeable
-	 * from unclaimed letters.
+	 * @param word The word to make.
 	 * @param player The player claiming the word.
-	 * @return true if the word is accepted.
+	 * @throws InvalidWordException When word is not in the dictionary, or
+	 * cannot be made from unclaimed letters.
 	 */
-	public boolean makeWord(String word, AnagramsPlayer player) {
+	public void makeWord(String word, AnagramsPlayer player) throws InvalidWordException {
 		if ( ! mWordFinder.wordInDictionary(word)) {
-			return false;
+			throw new InvalidWordException(String.format(
+					"%s is not in the dictionary.", 
+					word));
 		}
 		for (int i = 0; i < word.length(); i++) {
 			char letter = word.charAt(i);
 			if ( ! mLetterSet.reserveLetter(letter)) {
 				mLetterSet.releaseReservedLetters();
-				return false;
+				throw new InvalidWordException(String.format(
+						"The letter %c is not available to make %s.", 
+						letter,
+						word));
 			}
 		}
 		mLetterSet.hideReservedLetters();
 		player.setScore(player.getScore() + word.length());
 		mWordOwners.put(word, player);
-		return true;
 	}
 
 	public WordFinder getWordFinder() {
@@ -89,41 +93,53 @@ public class AnagramsGameModel implements Serializable {
 	}
 
 	/**
-	 * Make a word from a claimed word, and assign it to a player.
-	 * @param oldWord The existing word: must be claimed by one of the players.
-	 * @param newWord The word to make: must be in the dictionary, and makeable
-	 * from all the letters in oldWord, plus zero or more unclaimed letters.
+	 * Make a new word from a claimed word, and assign it to a player.
+	 * @param oldWord The existing word.
+	 * @param newWord The word to make.
 	 * @param player The player claiming the word.
-	 * @return true if the word is accepted.
+	 * @throws InvalidWordException When oldWord has not been claimed, newWord
+	 * 		is not in the dictionary or newWord is not makeable from all the 
+	 * 		letters in oldWord, plus zero or more unclaimed letters.
 	 */
-	public boolean changeWord(
+	public void changeWord(
 			String oldWord, 
 			String newWord,
-			AnagramsPlayer player) {
+			AnagramsPlayer player) throws InvalidWordException {
 		AnagramsPlayer oldPlayer = mWordOwners.get(oldWord);
 		if (oldPlayer == null) {
-			return false;
+			throw new InvalidWordException(String.format(
+					"%s is not a claimed word.", 
+					oldWord));
 		}
 		
 		LetterSet oldSet = new LetterSet(oldWord);
 		oldSet.showAllRemaining();
-		for (int i = 0; 
-				i < newWord.length(); i++) {
-			char letter = newWord.charAt(i);
-			if ( ! oldSet.reserveLetter(letter) && 
-					! mLetterSet.reserveLetter(letter)) {
-				mLetterSet.releaseReservedLetters();
-				return false;
+		try
+		{
+			for (int i = 0; 
+					i < newWord.length(); i++) {
+				char letter = newWord.charAt(i);
+				if ( ! oldSet.reserveLetter(letter) && 
+						! mLetterSet.reserveLetter(letter)) {
+					throw new InvalidWordException(String.format(
+							"%s is not available to make %s.",
+							letter,
+							newWord));
+				}
 			}
+			oldSet.hideReservedLetters();
+			if (oldSet.getVisibleLetters().length() > 0) {
+				throw new InvalidWordException(String.format(
+						"Some letters of %s were not used in %s.", 
+						oldWord,
+						newWord));
+			}
+			mLetterSet.hideReservedLetters();
 		}
-		oldSet.hideReservedLetters();
-		if (oldSet.getVisibleLetters().length() > 0) {
+		finally {
 			mLetterSet.releaseReservedLetters();
-			return false;
 		}
-		mLetterSet.hideReservedLetters();
 		player.setScore(player.getScore() + newWord.length());
 		oldPlayer.setScore(oldPlayer.getScore() - oldWord.length());
-		return true;
 	}
 }
