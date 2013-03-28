@@ -1,5 +1,8 @@
 package com.andrewpmsmith.movabletype.test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.andrewpmsmith.movabletype.model.AnagramsGameModel;
 import com.andrewpmsmith.movabletype.model.AnagramsPlayer;
 import com.andrewpmsmith.movabletype.model.InvalidWordException;
@@ -359,6 +362,42 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquivalent("unclaimed letters", "ERFGO", unclaimedLetters);
 		assertEquals("score 1", 0, player1Score);
 		assertEquals("score 2", 0, player2Score);
+	}
+
+	public void testGetWords() throws InvalidWordException {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"FORE",
+			"GORE",
+			"PORE",
+			"FORK"
+		}));
+		model.setDeck("ERFGOP");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //E
+		model.revealLetter(); //R
+		model.revealLetter(); //F
+		model.revealLetter(); //G
+		model.revealLetter(); //O
+
+		model.makeWord("FORE", player2);
+		List<AnagramsPlayer> players = model.getPlayers();
+		List<String> player1Words = model.getWords(player1);
+		List<String> player2Words = model.getWords(player2);
+		
+		// VERIFY
+		assertTrue("player 1 found", players.contains(player1));
+		assertTrue("player 2 found", players.contains(player2));
+		assertEquals("player count", 2, players.size());
+		assertEquals("player 1 word count", 0, player1Words.size());
+		assertEquals("player 2 word count", 1, player2Words.size());
+		assertEquals("player 2 word", "FORE", player2Words.get(0));
 	}
 
 }

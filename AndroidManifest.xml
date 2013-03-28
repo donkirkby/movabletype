@@ -32,6 +32,7 @@
             android:name="com.andrewpmsmith.movabletype.ui.InstructionsActivity"
             android:label="@string/title_activity_instructions" >
         </activity>
+        <activity android:name=".ui.AnagramsGameActivity" android:label="@string/title_activity_launch_screen"></activity>
     </application>
 
 </manifest>

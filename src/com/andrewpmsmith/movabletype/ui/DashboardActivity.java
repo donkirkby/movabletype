@@ -179,7 +179,7 @@ public class DashboardActivity extends Activity implements OnItemClickListener,
 
 		if (pos == NEW_GAME) {
 			Intent newGameintent = new Intent(DashboardActivity.this,
-					GameActivity.class);
+					AnagramsGameActivity.class);
 
 			startActivity(newGameintent);
 		} else if (pos == HOW_TO_PLAY) {

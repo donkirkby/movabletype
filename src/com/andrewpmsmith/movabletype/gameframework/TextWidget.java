@@ -80,4 +80,7 @@ public class TextWidget extends Widget {
 		mText = text;
 	}
 
+	public String getText() {
+		return mText;
+	}
 }

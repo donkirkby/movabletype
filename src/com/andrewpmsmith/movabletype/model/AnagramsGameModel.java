@@ -1,7 +1,10 @@
 package com.andrewpmsmith.movabletype.model;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * Manage the state of a game, including the state of the board, current word, 
@@ -24,6 +27,7 @@ public class AnagramsGameModel implements Serializable {
 	private WordFinder mWordFinder;
 	private LetterSet mLetterSet;
 	private HashMap<String, AnagramsPlayer> mWordOwners;
+	private ArrayList<AnagramsPlayer> mPlayers;
 
 	/**
 	 * Set the deck of letters to a given list. Resets the game state.
@@ -32,6 +36,7 @@ public class AnagramsGameModel implements Serializable {
 	public void setDeck(String deck) {
 		mLetterSet = new LetterSet(deck);
 		mWordOwners = new HashMap<String, AnagramsPlayer>();
+		mPlayers = new ArrayList<AnagramsPlayer>();
 	}
 	
 	/**
@@ -52,8 +57,35 @@ public class AnagramsGameModel implements Serializable {
 		return mLetterSet.getVisibleLetters();
 	}
 
+	/**
+	 * Add a player to the game.
+	 * @param player The player to add.
+	 */
 	public void addPlayer(AnagramsPlayer player) {
-		
+		mPlayers.add(player);
+	}
+
+	/**
+	 * Get all the players that were added by addPlayer().
+	 * @return a list of players.
+	 */
+	public List<AnagramsPlayer> getPlayers() {
+		return mPlayers;
+	}
+
+	/**
+	 * Get all words claimed by a player.
+	 * @param player The player who owns the words.
+	 * @return A list of words.
+	 */
+	public List<String> getWords(AnagramsPlayer player) {
+		ArrayList<String> words = new ArrayList<String>();
+		for (Entry<String, AnagramsPlayer> entry : mWordOwners.entrySet()) {
+			if (entry.getValue() == player) {
+				words.add(entry.getKey());
+			}
+		}
+		return words;
 	}
 
 	/**
