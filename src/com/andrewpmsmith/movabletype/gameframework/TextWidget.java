@@ -67,8 +67,8 @@ public class TextWidget extends Widget {
 		mMeasure.setTextSize(textSize);
 		mMeasure.getTextBounds(text, 0, text.length(), mTextBounds);
 		
-		while (mTextBounds.width()>width) {
-			textSize *=0.8;
+		while (textSize > 0 && mTextBounds.width() > width) {
+			textSize = Math.min((int)(textSize * 0.8), textSize - 1);
 			mMeasure.setTextSize( textSize );
 			mMeasure.getTextBounds(text, 0, text.length(), mTextBounds);
 		}

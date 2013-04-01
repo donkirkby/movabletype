@@ -100,4 +100,12 @@ public class LetterSet {
 	public void showAllRemaining() {
 		mNextTileToShow = mDeck.length;
 	}
+
+	/**
+	 * Count how many letters have not been shown yet.
+	 * @return the count.
+	 */
+	public int getRemainingCount() {
+		return mDeck.length - mNextTileToShow;
+	}
 }

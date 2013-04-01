@@ -2,7 +2,6 @@ package com.andrewpmsmith.movabletype.ui;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Random;
@@ -11,6 +10,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.res.Resources;
 import android.graphics.Color;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 
 import com.andrewpmsmith.movabletype.R;
@@ -47,14 +47,18 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 	private static final int TILE_SHADOW_RADIUS = 10;
 	private static final int COLOR_INVISIBLE = 0x00000000;
 	private static final int PLACEHOLDER_UNUSED = -1;
-	private final static double MIN_HEIGHT_TO_WIDTH = 1.4;
+//	private final static double MIN_HEIGHT_TO_WIDTH = 1.4;
 
 	private AnagramsGameModel mGameModel;
 
 	private List<Tile> mUnclaimed = new ArrayList<Tile>();
 	private List<Tile> mActiveWord = new ArrayList<Tile>();
+	private List<Tile> mCapturedWord;
+	private HashMap<AnagramsPlayer, Rect> mPlayerBuildingAreas =
+			new HashMap<AnagramsPlayer, Rect>();
 	private HashMap<AnagramsPlayer, List<List<Tile>>> mPlayerWords =
 			new HashMap<AnagramsPlayer, List<List<Tile>>>();
+	private AnagramsPlayer mActivePlayer;
 	private int mLongestWordSize;
 	private int mMaxWordCount; // most words owned by a single player
 	private Tile mPlaceHolderTile;
@@ -82,10 +86,13 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 	int mPlayer1SurroundedColor;
 	int mPlayer2SurroundedColor;
 	int mTextColor;
+	int mNextColor;
+	int mClearColor;
 	int mBackgroundColor;
 	int mDropShadowColor;
 
 	TextWidget mNextButton;
+	TextWidget mClearButton;
 	TextWidget mPlayer1Button;
 	TextWidget mPlayer2Button;
 	TextWidget mPlayer1Score;
@@ -117,6 +124,8 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 		mPlayer1SurroundedColor = res.getColor(R.color.player1_surrounded);
 		mPlayer2SurroundedColor = res.getColor(R.color.player2_surrounded);
 		mTextColor = res.getColor(R.color.tile_text);
+		mNextColor = Color.GREEN;
+		mClearColor = Color.rgb(200, 0, 200);
 		mBackgroundColor = res.getColor(R.color.background);
 		mDropShadowColor = res.getColor(R.color.tile_dropshadow);
 
@@ -127,7 +136,7 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 		mMaxWordCount = Math.max(
 				5, // Always leave room for at least 5 words.
 				unclaimed.length()); // leave room for all unclaimed letters.
-		List<AnagramsPlayer> players = mGameModel.getPlayers();
+		final List<AnagramsPlayer> players = mGameModel.getPlayers();
 		for (AnagramsPlayer player : players) {
 			List<List<Tile>> playerWordList = new ArrayList<List<Tile>>();
 			mPlayerWords.put(player, playerWordList);
@@ -162,15 +171,14 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 				COLOR_INVISIBLE, 
 				"Alice",
 				Color.BLACK);
-//		mPlayer1Button.setClickListener(new WidgetClickListener() {
-//
-//			@Override
-//			public void onClick(Widget w) {
-//				returnAllTilesToGrid();
-//				presentWord();
-//			}
-//
-//		});
+		mPlayer1Button.setClickListener(new WidgetClickListener() {
+
+			@Override
+			public void onClick(Widget w) {
+				mActivePlayer = players.get(0);
+			}
+
+		});
 		mPlayer1Button.setColor(mPlayer1Color);
 		addWidget(mPlayer1Button);
 
@@ -178,34 +186,52 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 				mPlayer2Color, 
 				"Bob",
 				Color.BLACK);
-//		mPlayer2Button.setClickListener(new WidgetClickListener() {
-//
-//			@Override
-//			public void onClick(Widget widget) {
-//				submitWord();
-//			}
-//
-//		});
+		mPlayer2Button.setClickListener(new WidgetClickListener() {
+
+			@Override
+			public void onClick(Widget widget) {
+				mActivePlayer = players.get(1);
+			}
+
+		});
 		addWidget(mPlayer2Button);
 		
 		mNextButton = new TextWidget(
-				Color.GREEN,
+				mNextColor,
 				"Next",
-				Color.BLACK);
+				mTextColor);
 		mNextButton.setClickListener(new WidgetClickListener() {
 
 			@Override
 			public void onClick(Widget widget) {
-				revealLetter();
+				if (getActiveBuildingArea() == null) {
+					revealLetter();
+				}
+				else {
+					submitWord();
+				}
 			}
 
 		});
 		addWidget(mNextButton);
+		
+		mClearButton = new TextWidget(
+				mClearColor, 
+				"Clear", 
+				mTextColor);
+		mClearButton.setClickListener(new WidgetClickListener() {
+			
+			@Override
+			public void onClick(Widget widget) {
+				clearWord();
+			}
+		});
+		addWidget(mClearButton);
 
 		String player1Score = String.valueOf(
 				players.get(0).getScore());
 		String player2Score = String.valueOf(
-				players.get(0).getScore());
+				players.get(1).getScore());
 
 		mPlayer1Score = new TextWidget(COLOR_INVISIBLE, player1Score,
 				mPlayer1SurroundedColor);
@@ -270,12 +296,27 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 
 		Tile.widthInGrid = tileHeight;
 		Tile.widthInWord = mTileWidthInWord = tileWidth;
+		
+		AnagramsPlayer player1 = mGameModel.getPlayers().get(0);
+		AnagramsPlayer player2 = mGameModel.getPlayers().get(1);
+		mPlayerBuildingAreas.put(
+				player1, 
+				new Rect(0, 0, getWidth()/2-tileWidth, tileHeight));
+		mPlayerBuildingAreas.put(
+				player2, 
+				new Rect(getWidth()/2+tileWidth, 0, getWidth(), tileHeight));
 
 		for (int i = 0; i < mUnclaimed.size(); ++i) {
-			int x = (getWidth() - tileWidth)/2;
+			int x = (getWidth() - Tile.widthInGrid)/2;
 			int y = tileHeight*i;
-			mUnclaimed.get(i).applyLayout(x, y, mTileWidthInWord, tileHeight);
+			mUnclaimed.get(i).applyLayout(x, y, Tile.widthInGrid, tileHeight);
 		}
+		
+		layoutPlayerWords(mGameModel.getPlayers().get(0), 0, tileHeight);
+		layoutPlayerWords(
+				mGameModel.getPlayers().get(1), 
+				getWidth()/2 + tileHeight, 
+				tileHeight);
 
 		mPlaceHolderTile.applyLayout(0, mWordTop, Tile.widthInWord, tileHeight);
 
@@ -300,25 +341,66 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 				tileHeight*2,
 				tileHeight);
 		mNextButton.applyLayout(
-				(getWidth() - tileHeight) / 2,
+				getWidth() / 2 - tileHeight,
+				getHeight()-tileHeight,
+				tileHeight,
+				tileHeight);
+		mClearButton.applyLayout(
+				getWidth() / 2,
 				getHeight()-tileHeight,
 				tileHeight,
 				tileHeight);
 	}
 
+	private void layoutPlayerWords(
+			AnagramsPlayer player, 
+			int left,
+			int tileHeight) {
+		int y = 0;
+		for (List<Tile> word : mPlayerWords.get(player)) {
+			y += tileHeight;
+			int x = left;
+			for (Tile tile : word) {
+				tile.applyLayout(x, y, Tile.widthInWord, tileHeight);
+				x += Tile.widthInWord;
+			}
+		}
+	}
+
 	@Override
 	public void onClick(Widget w) {
-
+		Rect buildingArea = getActiveBuildingArea();
+		if (buildingArea == null)
+		{
+			return;
+		}
 		Tile t = (Tile) w;
-
-		if (w.getY() == mWordTop) {
+		
+		if (buildingArea.contains(t.getX(), t.getY())) {
 			removeTileFromWord(t);
-			animateToPosition(t, t.mPositionInGrid_x, t.mPositionInGrid_y,
+			animateToPosition(
+					t, 
+					t.mPositionInGrid_x, 
+					t.mPositionInGrid_y,
 					Tile.widthInGrid);
-
 		} else {
 			addTileToWord(t);
+			List<Tile> owningWord = findOwningWord(t);
+			if (owningWord != null) {
+				mCapturedWord = owningWord;
+			}
 		}
+	}
+
+	private List<Tile> findOwningWord(Tile tile) {
+		for (AnagramsPlayer player : mGameModel.getPlayers()) {
+			for (List<Tile> word : mPlayerWords.get(player)) {
+				if (word.contains(tile)) {
+					return word;
+				}
+			}
+		}
+		return null;
 	}
 
 	@Override
@@ -453,34 +535,43 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 
 	}
 
-	private void resizeTilesToFitWord() {
+	private void resizeTilesToFitWord(Rect area) {
 		// Shrink or expand the tile size if required
 		Tile.widthInWord = mTileWidthInWord;
-		while (mActiveWord.size() * Tile.widthInWord > getWidth()) {
+		while (mLongestWordSize * Tile.widthInWord > area.width()) {
 			Tile.widthInWord *= 0.8;
 		}
 	}
 
 	private void presentWord() {
+		Rect buildingArea = getActiveBuildingArea();
+		if (buildingArea == null) {
+			return;
+		}
+		resizeTilesToFitWord(buildingArea);
 
-		resizeTilesToFitWord();
-
-		int offset = (int) (getWidth() / 2 - (Tile.widthInWord / 2.0)
-				* mActiveWord.size());
-
-		List<Integer> letters = new LinkedList<Integer>();
 		for (int i = 0; i < mActiveWord.size(); ++i) {
 
 			Tile t = mActiveWord.get(i);
-			int x = offset + Tile.widthInWord * i;
-			int y = mWordTop;
+			int x = buildingArea.left + Tile.widthInWord * i;
+			int y = buildingArea.top;
 
 			animateToPosition(t, x, y, Tile.widthInWord);
-
-			if (t.getIndex() >= 0) {
-				letters.add(t.getIndex());
-			}
 		}
+	}
+
+	private Rect getActiveBuildingArea() {
+		Rect buildingArea =
+				mActivePlayer == null
+				? null
+				: mPlayerBuildingAreas.get(mActivePlayer);
+		return buildingArea;
+	}
+	
+	private void clearWord() {
+		returnAllTilesToGrid();
+		mActivePlayer = null;
+		mCapturedWord = null;
 	}
 
 	private void submitWord() {
@@ -488,14 +579,33 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 		final Resources res = getResources();
 		final String dismiss = res.getString(R.string.dismiss_message);
 		try {
-			StringBuilder word = new StringBuilder();
-			for (Tile tile : mActiveWord) {
-				word.append(tile.getText());
+			if (mCapturedWord != null) {
+				mGameModel.changeWord(
+						buildWord(mCapturedWord), 
+						buildWord(mActiveWord), 
+						mActivePlayer);
+				for (AnagramsPlayer player : mGameModel.getPlayers()) {
+					mPlayerWords.get(player).remove(mCapturedWord);
+				}
 			}
-			AnagramsPlayer player = mGameModel.getPlayers().get(0);
-			mGameModel.makeWord(word.toString(), player);
+			else {
+				mGameModel.makeWord(buildWord(mActiveWord), mActivePlayer);
+			}
+			mPlayerWords.get(mActivePlayer).add(mActiveWord);
 
-			returnAllTilesToGrid();
+			for (Tile tile : mActiveWord) {
+				mUnclaimed.remove(tile);
+			}
+			mActiveWord = new ArrayList<Tile>();
+			mActivePlayer = null;
+			mCapturedWord = null;
+
+			mPlayer1Score.setText(String.valueOf(
+					mGameModel.getPlayers().get(0).getScore()));
+			mPlayer2Score.setText(String.valueOf(
+					mGameModel.getPlayers().get(1).getScore()));
+			
+			layoutBoard();
 
 		}
 		catch (InvalidWordException ex) {
@@ -507,12 +617,27 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 		}
 
 	}
+
+	private String buildWord(List<Tile> tiles) {
+		StringBuilder word = new StringBuilder();
+		for (Tile tile : tiles) {
+			word.append(tile.getText());
+		}
+		String wordText = word.toString();
+		return wordText;
+	}
 	
 	private void revealLetter() {
+		if (mGameModel.isDeckEmpty()) {
+			return;
+		}
 		char letter = mGameModel.revealLetter();
 		Tile tile = addTile(String.valueOf(letter));
 		mUnclaimed.add(tile);
 		mMaxWordCount = Math.max(mMaxWordCount, mUnclaimed.size());
 		layoutBoard();
+		if (mGameModel.isDeckEmpty()) {
+			mNextButton.setColor(Color.TRANSPARENT);
+		}
 	}
 }

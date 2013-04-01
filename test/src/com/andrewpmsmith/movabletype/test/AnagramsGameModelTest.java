@@ -1,6 +1,5 @@
 package com.andrewpmsmith.movabletype.test;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.andrewpmsmith.movabletype.model.AnagramsGameModel;
@@ -24,6 +23,21 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquals("unclaimed letters 1", "E", unclaimedLetters1);
 		assertEquals("letter 2", 'R', letter2);
 		assertEquals("unclaimed letters 2", "ER", unclaimedLetters2);
+	}
+
+	public void testEmpty() {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setDeck("E");
+		
+		// EXEC
+		boolean isEmptyBefore = model.isDeckEmpty();
+		model.revealLetter();
+		boolean isEmptyAfter = model.isDeckEmpty();
+		
+		// VERIFY
+		assertFalse("empty before", isEmptyBefore);
+		assertTrue("empty after", isEmptyAfter);
 	}
 
 	public void testRestart() {
@@ -364,7 +378,7 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquals("score 2", 0, player2Score);
 	}
 
-	public void testGetWords() throws InvalidWordException {
+	public void testGetWordsFromMake() throws InvalidWordException {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
 		model.setWordFinder(new WordFinderStub(new String[] {
@@ -398,6 +412,40 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquals("player 1 word count", 0, player1Words.size());
 		assertEquals("player 2 word count", 1, player2Words.size());
 		assertEquals("player 2 word", "FORE", player2Words.get(0));
+	}
+
+	public void testGetWordsFromChange() throws InvalidWordException {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"FORE",
+			"FORGE",
+			"GORE",
+			"PORE",
+			"FORK"
+		}));
+		model.setDeck("ERFGOP");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //E
+		model.revealLetter(); //R
+		model.revealLetter(); //F
+		model.revealLetter(); //G
+		model.revealLetter(); //O
+
+		model.makeWord("FORE", player2);
+		model.changeWord("FORE", "FORGE", player1);
+		List<String> player1Words = model.getWords(player1);
+		List<String> player2Words = model.getWords(player2);
+		
+		// VERIFY
+		assertEquals("player 1 word count", 1, player1Words.size());
+		assertEquals("player 2 word count", 0, player2Words.size());
+		assertEquals("player 1 word", "FORGE", player1Words.get(0));
 	}
 
 }

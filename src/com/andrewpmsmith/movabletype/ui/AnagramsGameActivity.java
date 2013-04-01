@@ -8,8 +8,6 @@ import android.view.Window;
 import com.andrewpmsmith.movabletype.R;
 import com.andrewpmsmith.movabletype.model.AnagramsGameModel;
 import com.andrewpmsmith.movabletype.model.AnagramsPlayer;
-import com.andrewpmsmith.movabletype.model.GameDataBase;
-import com.andrewpmsmith.movabletype.model.GameModel;
 import com.andrewpmsmith.movabletype.model.WordList;
 
 /**
@@ -40,11 +38,28 @@ public class AnagramsGameActivity extends Activity {
 //		} else {
 		mGameModel = new AnagramsGameModel();
 		mGameModel.setWordFinder(new WordList(this));
-		mGameModel.setDeck("AXEFGHILPFHEXA");
+		
+		String letterSource = 
+				"AAAAAAAAAAAAAAAABBBBCCCCDDDDDDDDEEEEEEEEEEEEEEEEEEEEEEFFFF" +
+				"GGGGGGHHHHHHIIIIIIIIIIIIIIJJKKLLLLLLLLMMMMNNNNNNNNNN" +
+				"OOOOOOOOOOOOOOPPPPQQRRRRRRRRRRRRSSSSSSSSTTTTTTTTTTUUUUUUUU" +
+				"VVWWXXYYYYZZ";
+		char[] letters = letterSource.toCharArray();
+        // shuffle
+        for (int i = letters.length - 1; i > 0; i--) {
+            // int from remainder of deck
+            int r = (int) (Math.random() * (i + 1));
+            char swap = letters[r];
+            letters[r] = letters[i];
+            letters[i] = swap;
+        }
+
+        mGameModel.setDeck(new String(letters));
 		mGameModel.addPlayer(new AnagramsPlayer());
 		mGameModel.addPlayer(new AnagramsPlayer());
-		mGameModel.revealLetter();
-		mGameModel.revealLetter();
+		for (int i = 0; i < 4; i++) {
+			mGameModel.revealLetter();
+		}
 //		}
 
 		mBoard = new AnagramsBoard(this, mGameModel);
@@ -56,8 +71,8 @@ public class AnagramsGameActivity extends Activity {
 	public void onPause() {
 		super.onPause();
 
-		GameDataBase gdb = new GameDataBase(this);
 // TODO:
+//		GameDataBase gdb = new GameDataBase(this);
 //		if (mGameModel.getGameState() == GameModel.GameState.GAME_OVER) {
 //			// Game has finished. Clean up the DB
 //			gdb.deleteGame(mSavedGameId);

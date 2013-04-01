@@ -167,11 +167,17 @@ public class AnagramsGameModel implements Serializable {
 						newWord));
 			}
 			mLetterSet.hideReservedLetters();
+			mWordOwners.put(newWord, player);
+			mWordOwners.remove(oldWord);
 		}
 		finally {
 			mLetterSet.releaseReservedLetters();
 		}
 		player.setScore(player.getScore() + newWord.length());
 		oldPlayer.setScore(oldPlayer.getScore() - oldWord.length());
+	}
+
+	public boolean isDeckEmpty() {
+		return mLetterSet.getRemainingCount() <= 0;
 	}
 }
