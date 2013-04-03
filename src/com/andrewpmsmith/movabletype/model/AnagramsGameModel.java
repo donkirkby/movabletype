@@ -3,6 +3,7 @@ package com.andrewpmsmith.movabletype.model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -27,6 +28,7 @@ public class AnagramsGameModel implements Serializable {
 	private WordFinder mWordFinder;
 	private LetterSet mLetterSet;
 	private HashMap<String, AnagramsPlayer> mWordOwners;
+	private HashSet<String> mPlayedWords;
 	private ArrayList<AnagramsPlayer> mPlayers;
 
 	/**
@@ -37,6 +39,7 @@ public class AnagramsGameModel implements Serializable {
 		mLetterSet = new LetterSet(deck);
 		mWordOwners = new HashMap<String, AnagramsPlayer>();
 		mPlayers = new ArrayList<AnagramsPlayer>();
+		mPlayedWords = new HashSet<String>();
 	}
 	
 	/**
@@ -96,11 +99,7 @@ public class AnagramsGameModel implements Serializable {
 	 * cannot be made from unclaimed letters.
 	 */
 	public void makeWord(String word, AnagramsPlayer player) throws InvalidWordException {
-		if ( ! mWordFinder.wordInDictionary(word)) {
-			throw new InvalidWordException(String.format(
-					"%s is not in the dictionary.", 
-					word));
-		}
+		validateWord(word);
 		for (int i = 0; i < word.length(); i++) {
 			char letter = word.charAt(i);
 			if ( ! mLetterSet.reserveLetter(letter)) {
@@ -112,8 +111,26 @@ public class AnagramsGameModel implements Serializable {
 			}
 		}
 		mLetterSet.hideReservedLetters();
+		mPlayedWords.add(word);
 		player.setScore(player.getScore() + word.length());
 		mWordOwners.put(word, player);
+	}
+	
+	private void validateWord(String word) throws InvalidWordException {
+		if (word.length() < 4) {
+			throw new InvalidWordException(
+					"Words must be at least 4 letters long.");
+		}
+		if (mPlayedWords.contains(word)) {
+			throw new InvalidWordException(String.format(
+					"%s has already been played.",
+					word));
+		}
+		if ( ! mWordFinder.wordInDictionary(word)) {
+			throw new InvalidWordException(String.format(
+					"%s is not in the dictionary.", 
+					word));
+		}
 	}
 
 	public WordFinder getWordFinder() {
@@ -137,6 +154,7 @@ public class AnagramsGameModel implements Serializable {
 			String oldWord, 
 			String newWord,
 			AnagramsPlayer player) throws InvalidWordException {
+		validateWord(newWord);
 		AnagramsPlayer oldPlayer = mWordOwners.get(oldWord);
 		if (oldPlayer == null) {
 			throw new InvalidWordException(String.format(
@@ -167,6 +185,7 @@ public class AnagramsGameModel implements Serializable {
 						newWord));
 			}
 			mLetterSet.hideReservedLetters();
+			mPlayedWords.add(newWord);
 			mWordOwners.put(newWord, player);
 			mWordOwners.remove(oldWord);
 		}

@@ -264,6 +264,82 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 		assertEquals("score 1", 5, player1Score);
 	}
 
+	public void testChangeToUnknownWord() throws Exception {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"FORE",
+			"FORCE",
+			"FORGE",
+			"FORK",
+			"GORE",
+			"PORE",
+		}));
+		model.setDeck("ERFGOPN");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //E
+		model.revealLetter(); //R
+		model.revealLetter(); //F
+		model.revealLetter(); //G
+		model.revealLetter(); //O
+		model.revealLetter(); //P
+
+		model.makeWord("FORE", player1);
+		InvalidWordException ex = 
+				changeInvalidWord(model, "FORE", "GROFE", player1);
+		model.changeWord("FORE", "FORGE", player1);
+		String unclaimedLetters = model.getUnclaimedLetters();
+		int player1Score = player1.getScore();
+		
+		// VERIFY
+		assertEquals(
+				"message",
+				"GROFE is not in the dictionary.",
+				ex.getMessage());
+		assertEquals("unclaimed letters", "P", unclaimedLetters);
+		assertEquals("score 1", 5, player1Score);
+	}
+
+	public void testReuseWord() throws Exception {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"RATS",
+			"STAR",
+			"STARS",
+			"START",
+		}));
+		model.setDeck("STARST");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //S
+		model.revealLetter(); //T
+		model.revealLetter(); //A
+		model.revealLetter(); //R
+		model.revealLetter(); //S
+		model.revealLetter(); //T
+
+		model.makeWord("RATS", player1);
+		model.changeWord("RATS", "STAR", player2);
+		InvalidWordException ex = 
+				changeInvalidWord(model, "STAR", "RATS", player1);
+		
+		// VERIFY
+		assertEquals(
+				"message",
+				"RATS has already been played.",
+				ex.getMessage());
+	}
+
 	public void testIncompleteChange() throws Exception {
 		// SETUP
 		AnagramsGameModel model = new AnagramsGameModel();
@@ -302,6 +378,40 @@ public class AnagramsGameModelTest extends AnagramsTestCase {
 				ex.getMessage());
 		assertEquals("unclaimed letters", "P", unclaimedLetters);
 		assertEquals("score 1", 5, player1Score);
+	}
+
+	public void testShortWord() throws Exception {
+		// SETUP
+		AnagramsGameModel model = new AnagramsGameModel();
+		model.setWordFinder(new WordFinderStub(new String[] {
+			"FORE",
+			"FORGE",
+			"FORK",
+			"GORE",
+			"PORE",
+		}));
+		model.setDeck("ERFGOPN");
+		AnagramsPlayer player1 = new AnagramsPlayer();
+		AnagramsPlayer player2 = new AnagramsPlayer();
+		model.addPlayer(player1);
+		model.addPlayer(player2);
+		
+		// EXEC
+		model.revealLetter(); //E
+		model.revealLetter(); //R
+		model.revealLetter(); //F
+		model.revealLetter(); //G
+		model.revealLetter(); //O
+		model.revealLetter(); //P
+
+		InvalidWordException ex = 
+				makeInvalidWord(model, "FOR", player1);
+		
+		// VERIFY
+		assertEquals(
+				"message",
+				"Words must be at least 4 letters long.",
+				ex.getMessage());
 	}
 
 	public void testMakeUnknownWord() throws Exception {
