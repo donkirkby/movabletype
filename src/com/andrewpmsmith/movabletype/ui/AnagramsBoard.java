@@ -603,20 +603,16 @@ public class AnagramsBoard extends RenderSurface implements WidgetClickListener,
 
 	}
 
-	private void resizeTilesToFitWord(Rect area) {
-		// Shrink or expand the tile size if required
-		Tile.widthInWord = mTileWidthInWord;
-		while (mLongestWordSize * Tile.widthInWord > area.width()) {
-			Tile.widthInWord *= 0.8;
-		}
-	}
-
 	private void presentWord() {
 		Rect buildingArea = getActiveBuildingArea();
 		if (buildingArea == null) {
 			return;
 		}
-		resizeTilesToFitWord(buildingArea);
+		if (mActiveWord.size() > mLongestWordSize)
+		{
+			mLongestWordSize = mActiveWord.size();
+			layoutBoard();
+		}
 
 		for (int i = 0; i < mActiveWord.size(); ++i) {
 
